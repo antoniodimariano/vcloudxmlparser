@@ -1,0 +1,17 @@
+{
+  "name": "vcloudxmlparser",
+  "version": "1.0.0",
+  "description": "A parser for the VMware vCloud Director's XML responses ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=7.9.0"
+  },
+  "author": "Antonio Di Mariano",
+  "license": "ISC",
+  "dependencies": {
+    "xml2js": "^0.4.17"
+  }
+}
