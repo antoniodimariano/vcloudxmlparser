@@ -68,9 +68,83 @@ const parsevCloudUserXML = (XMLbody) => {
     })
 }
 
+
+/**
+ * VAPP DEPLOYMENT
+ * @type {{parseFromFile: ((p1:*, p2:*)), parsevCloudUserXML: ((p1?:*)), convertStringToXML: ((p1?:*)), parseXMLandConvertToString: ((p1?:*))}}
+ */
+const buildVappDeploymentTemplate = (XMLstring, vAppName, vdcHref, networkURI,baseVappTemplate) => {
+
+    return new Promise((resolve, reject) => {
+        this.parseXMLandConvertToString(XMLstring)
+            .then((parsedString) => {
+                return parsedString
+            })
+            .then((parsedString) => {
+                return extractNetworkConfigFromVappTemplate(parsedString, networkURI)
+            })
+            .then((resultsConfig) => {
+                return buildtheVappDeploymentTemplate(baseVappTemplate,resultsConfig[0].networkConfig, vAppName, vdcHref)
+            })
+            .then((vAppInitTemplate) => {
+                return resolve(vAppInitTemplate)
+            })
+            .catch((error) => {
+                return reject(error)
+            })
+    })
+}
+
+
+const extractNetworkConfigFromVappTemplate = (originalTemplate, orgHref) => {
+
+    return new Promise((resolve, reject) => {
+        const networkName = originalTemplate.VAppTemplate.NetworkConfigSection[0].NetworkConfig.map(elem => elem['$'].networkName)
+        const featuresSection = originalTemplate.VAppTemplate.NetworkConfigSection[0].NetworkConfig.map((elem, index, array) => elem.Configuration[index].Features[index])
+        const org = originalTemplate.VAppTemplate.NetworkConfigSection[0].NetworkConfig.map((elem, index, array) => {
+                delete elem.Configuration[index].Features[index];
+                delete elem.Configuration[index].ParentNetwork[index]['$'].name;
+                elem.Configuration[index].ParentNetwork[0]['$'].href = orgHref
+                return array
+            }
+        )
+        let features = []
+        features[features.length] = {"networkName": networkName, "features": featuresSection};
+        let resultsConfig = []
+        resultsConfig[resultsConfig.length] = {
+            "networkConfig": originalTemplate.VAppTemplate.NetworkConfigSection[0],
+            "features": features
+        };
+        delete resultsConfig[0].networkConfig['$'];
+        return resolve(resultsConfig)
+    })
+}
+const buildtheVappDeploymentTemplate = (baseVappTemplate, networkConfig, vAppName, vdcHref) => {
+    if (!baseVappTemplate) return new Promise((resolve, reject) => reject({error: 'Please specify an initial base Vapp Template'}))
+
+    return new Promise((resolve, reject) => {
+        this.parseXMLandConvertToString(baseVappTemplate)
+            .then((vAppTemplate) => {
+                vAppTemplate.InstantiateVAppTemplateParams.InstantiationParams[0].NetworkConfigSection[0] = networkConfig;
+                vAppTemplate.InstantiateVAppTemplateParams.Source[0]['$'].href = vdcHref;
+                vAppTemplate.InstantiateVAppTemplateParams['$'].name = vAppName;
+                return vAppTemplate
+            })
+            .then((vappTemplate) => {
+                return resolve(this.convertStringToXML(vappTemplate))
+            })
+            .catch((error) => {
+                return reject(error)
+            })
+    })
+}
+
+
 module.exports = {
     parseFromFile: parseFromFile,
     parsevCloudUserXML: parsevCloudUserXML,
     convertStringToXML: convertStringToXML,
-    parseXMLandConvertToString: parseXMLandConvertToString
+    parseXMLandConvertToString: parseXMLandConvertToString,
+
+    buildVappDeploymentTemplate:buildVappDeploymentTemplate
 }
